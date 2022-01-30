@@ -6,7 +6,7 @@ mod proto;
 mod select;
 
 use indent::{dotted, spaced};
-use proto::try_parse_entries;
+use proto::{try_parse_entries, ParseConfig};
 use select::parse_select;
 
 use clap::{ArgEnum, Parser};
@@ -20,6 +20,22 @@ struct Args {
     /// How to style indent
     #[clap(arg_enum, short, long, default_value = "dot")]
     indent: IndentStyle,
+
+    /// Assume wire type 1 or 5 (fixed64, sfixed64, double, fixed32, sfixed32, float) is not used.
+    /// Implies --no_fixed64 and --no_fixed32.
+    /// This helps auto-detecting bytes vs. message field.
+    #[clap(long)]
+    no_fixed: bool,
+
+    /// Assume wire type 1 (fixed64, sfixed64, double) is not used.
+    /// This helps auto-detecting bytes vs. message field.
+    #[clap(long)]
+    no_fixed64: bool,
+
+    /// Assume wire type 5 (fixed32, sfixed32, float) is not used.
+    /// This helps auto-detecting bytes vs. message field.
+    #[clap(long)]
+    no_fixed32: bool,
 
     /// The path to select. e.g. .2.1.1
     #[clap()]
@@ -37,6 +53,7 @@ enum IndentStyle {
 struct Config {
     pub indent: IndentStyle,
     pub select: Vec<u64>,
+    pub parse_config: ParseConfig,
 }
 
 fn main() {
@@ -50,13 +67,17 @@ fn main() {
     let config = Config {
         indent: args.indent,
         select: parse_select(&args.select.unwrap_or_default()),
+        parse_config: ParseConfig {
+            no_fixed64: args.no_fixed || args.no_fixed64,
+            no_fixed32: args.no_fixed || args.no_fixed32,
+        },
     };
 
     decode(&input, &config);
 }
 
 fn decode(bytes: &[u8], config: &Config) {
-    if let Some(entries) = try_parse_entries(bytes, &[]) {
+    if let Some(entries) = try_parse_entries(bytes, &[], config.parse_config) {
         for entry in entries {
             if !entry.path.starts_with(&config.select) {
                 continue;

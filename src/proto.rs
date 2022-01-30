@@ -16,9 +16,24 @@ pub enum EntryValue {
     CloseNested,
 }
 
+#[derive(Copy, Clone)]
+pub struct ParseConfig {
+    pub no_fixed64: bool,
+    pub no_fixed32: bool,
+}
+
+impl Default for ParseConfig {
+    fn default() -> Self {
+        Self {
+            no_fixed64: false,
+            no_fixed32: false,
+        }
+    }
+}
+
 /// Tries to parse bytes as protobuf message and returns entries.
 /// Each entry represents one line in the output.
-pub fn try_parse_entries(bytes: &[u8], path: &[u64]) -> Option<Vec<Entry>> {
+pub fn try_parse_entries(bytes: &[u8], path: &[u64], config: ParseConfig) -> Option<Vec<Entry>> {
     if bytes.is_empty() {
         // Empty byte arrays should be represented as "" instead of empty message
         return None;
@@ -32,20 +47,30 @@ pub fn try_parse_entries(bytes: &[u8], path: &[u64]) -> Option<Vec<Entry>> {
 
         match &field.value {
             Value::Unknown(unknown) => match unknown {
-                UnknownValue::Fixed32(v) => out.push(Entry {
-                    path: nested_path,
-                    value: EntryValue::Int((*v).into()),
-                }),
-                UnknownValue::Fixed64(v) => out.push(Entry {
-                    path: nested_path,
-                    value: EntryValue::Int((*v).into()),
-                }),
+                UnknownValue::Fixed64(v) => {
+                    if config.no_fixed64 {
+                        return None;
+                    }
+                    out.push(Entry {
+                        path: nested_path,
+                        value: EntryValue::Int((*v).into()),
+                    })
+                }
+                UnknownValue::Fixed32(v) => {
+                    if config.no_fixed32 {
+                        return None;
+                    }
+                    out.push(Entry {
+                        path: nested_path,
+                        value: EntryValue::Int((*v).into()),
+                    })
+                }
                 UnknownValue::Varint(v) => out.push(Entry {
                     path: nested_path,
                     value: EntryValue::Int(*v),
                 }),
                 UnknownValue::VariableLength(v) => {
-                    if let Some(nested_entries) = try_parse_entries(&v, &nested_path) {
+                    if let Some(nested_entries) = try_parse_entries(&v, &nested_path, config) {
                         out.push(Entry {
                             path: nested_path.clone(),
                             value: EntryValue::OpenNested,
@@ -93,7 +118,7 @@ mod tests {
     #[test]
     fn try_parse_entries_works() {
         // one
-        let entries = try_parse_entries(b"\x12\x07Unknown", &[]).unwrap();
+        let entries = try_parse_entries(b"\x12\x07Unknown", &[], ParseConfig::default()).unwrap();
         assert_eq!(
             entries,
             &[Entry {
@@ -103,7 +128,12 @@ mod tests {
         );
 
         // two
-        let entries = try_parse_entries(b"\x12\x07Unknown\x12\x07Unknown", &[]).unwrap();
+        let entries = try_parse_entries(
+            b"\x12\x07Unknown\x12\x07Unknown",
+            &[],
+            ParseConfig::default(),
+        )
+        .unwrap();
         assert_eq!(
             entries,
             &[
@@ -119,7 +149,7 @@ mod tests {
         );
 
         // nested path
-        let entries = try_parse_entries(b"\x12\x07Unknown", &[42]).unwrap();
+        let entries = try_parse_entries(b"\x12\x07Unknown", &[42], ParseConfig::default()).unwrap();
         assert_eq!(
             entries,
             &[Entry {
@@ -129,18 +159,22 @@ mod tests {
         );
 
         // No valid protobuf (incomplete)
-        let res = try_parse_entries(b"\x12\x07Unknown\x0a\x0fAtlantic ", &[]);
+        let res = try_parse_entries(
+            b"\x12\x07Unknown\x0a\x0fAtlantic ",
+            &[],
+            ParseConfig::default(),
+        );
         assert_eq!(res, None);
 
         // No valid protobuf (wrong wire type)
         // End group (deprecated) in field 2: hex((2 << 3) | 4)
-        let res = try_parse_entries(b"\x14\x07Unknown", &[]);
+        let res = try_parse_entries(b"\x14\x07Unknown", &[], ParseConfig::default());
         assert_eq!(res, None);
     }
 
     #[test]
     fn try_parse_entries_returns_none_for_empty() {
-        let res = try_parse_entries(b"", &[]);
+        let res = try_parse_entries(b"", &[], ParseConfig::default());
         assert_eq!(res, None);
     }
 }
