@@ -4,10 +4,12 @@ use std::io::Read;
 mod indent;
 mod proto;
 mod select;
+mod wire_type_2;
 
 use indent::{dotted, spaced};
 use proto::{try_parse_entries, ParseConfig};
 use select::parse_select;
+use wire_type_2::escape_string;
 
 use clap::{ArgEnum, Parser};
 
@@ -113,16 +115,19 @@ fn print_int(i: impl Into<u128>) -> String {
 }
 
 fn print_bytes(bytes: &[u8]) -> String {
-    let mut text = match std::str::from_utf8(bytes) {
-        Ok(converted) => format!("\"{}\"", converted),
-        Err(_err) => hex::encode(bytes),
+    let text = match std::str::from_utf8(bytes) {
+        Ok(converted) => escape_string(converted),
+        Err(_err) => {
+            const MAX_BYTES: usize = 256;
+            if bytes.len() <= MAX_BYTES {
+                hex::encode(bytes)
+            } else {
+                let mut truncated = hex::encode(&bytes[0..MAX_BYTES]);
+                truncated.push('…');
+                truncated
+            }
+        }
     };
-    const MAX_CHARS: usize = 500;
-    if text.chars().take(MAX_CHARS + 1).count() > MAX_CHARS {
-        let mut truncated: String = text.chars().take(MAX_CHARS).collect();
-        truncated.push('…');
-        text = truncated;
-    }
     Green.paint(text).to_string()
 }
 
