@@ -1,0 +1,15 @@
+[package]
+name = "decode_raw"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+# Example of customizing binaries in Cargo.toml.
+[[bin]]
+name = "decode_raw"
+
+[dependencies]
+protofish = "0.5.2"
+ansi_term = "0.12"
+hex = "0.4"
