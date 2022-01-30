@@ -1,67 +1,90 @@
 use ansi_term::Colour::{Green, Red};
-use protofish::decode::UnknownValue;
-use protofish::prelude::*;
 use std::io::Read;
 
+mod indent;
 mod proto;
+mod select;
 
-use proto::decode_fields;
+use indent::{dotted, spaced};
+use proto::try_parse_entries;
+use select::parse_select;
+
+use clap::{ArgEnum, Parser};
+
+use crate::proto::EntryValue;
+
+/// Simple program to greet a person
+#[derive(Parser)]
+#[clap(author, about, long_about = None)]
+struct Args {
+    /// How to style indent
+    #[clap(arg_enum, short, long, default_value = "dot")]
+    indent: IndentStyle,
+
+    /// The path to select. e.g. .2.1.1
+    #[clap()]
+    select: Option<String>,
+}
+
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, ArgEnum)]
+enum IndentStyle {
+    Space,
+    Dot,
+    Path,
+}
+
+#[derive(Clone)]
+struct Config {
+    pub indent: IndentStyle,
+    pub select: Vec<u64>,
+}
 
 fn main() {
+    let args = Args::parse();
+
     let mut input = Vec::<u8>::new();
     for byte in std::io::stdin().bytes() {
         input.push(byte.unwrap());
     }
 
-    decode(&input);
+    let config = Config {
+        indent: args.indent,
+        select: parse_select(&args.select.unwrap_or_default()),
+    };
+
+    decode(&input, &config);
 }
 
-fn decode(bytes: &[u8]) {
-    if let Some(msg) = try_decode_message(bytes, 0) {
-        print!("{}\n", msg);
+fn decode(bytes: &[u8], config: &Config) {
+    if let Some(entries) = try_parse_entries(bytes, &[]) {
+        for entry in entries {
+            if !entry.path.starts_with(&config.select) {
+                continue;
+            }
+
+            let stripped_path = entry.path[config.select.len()..].to_vec();
+
+            let path = print_path(&stripped_path, config);
+            match entry.value {
+                EntryValue::Int(i) => print!("{}: {}\n", path, print_int(i)),
+                EntryValue::Bytes(v) => {
+                    print!("{}: ({} bytes) {}\n", path, v.len(), print_bytes(&v))
+                }
+                EntryValue::OpenNested => {
+                    if !path.is_empty() {
+                        print!("{} {{\n", path);
+                    }
+                }
+                EntryValue::CloseNested => {
+                    if !path.is_empty() {
+                        print!("{}}}\n", dotted((path.chars().count() - 1) / 2));
+                    }
+                }
+            }
+        }
     } else {
         panic!("Input bytes is not a valid protobuf serialization");
     }
-}
-
-fn try_decode_message(bytes: &[u8], indent: usize) -> Option<String> {
-    if bytes.len() == 0 {
-        return None;
-    }
-
-    let fields = decode_fields(&bytes);
-    let mut out = String::new();
-    for field in fields.into_iter() {
-        if out.len() != 0 {
-            out.push('\n');
-        }
-        for _ in 0..indent {
-            out.push('·');
-        }
-        out.push_str(&format!("{}: ", field.number));
-        match &field.value {
-            Value::Unknown(unknown) => match unknown {
-                UnknownValue::Fixed32(v) => out.push_str(&print_int(*v)),
-                UnknownValue::Fixed64(v) => out.push_str(&print_int(*v)),
-                UnknownValue::Varint(v) => out.push_str(&print_int(*v)),
-                UnknownValue::VariableLength(v) => {
-                    if let Some(nested_msg) = try_decode_message(&v, indent + 1) {
-                        out.push('\n');
-                        // out.push_str(&format!("(length {})", v.len()));
-                        out.push_str(&nested_msg);
-                    } else {
-                        out.push_str(&format!("({} bytes) ", v.len()));
-                        out.push_str(&print_bytes(v));
-                    }
-                }
-                UnknownValue::Invalid(_wire_type, _bytes) => {
-                    return None;
-                }
-            },
-            _ => return None,
-        }
-    }
-    Some(out)
 }
 
 fn print_int(i: impl Into<u128>) -> String {
@@ -69,9 +92,38 @@ fn print_int(i: impl Into<u128>) -> String {
 }
 
 fn print_bytes(bytes: &[u8]) -> String {
-    let text = match std::str::from_utf8(bytes) {
+    let mut text = match std::str::from_utf8(bytes) {
         Ok(converted) => format!("\"{}\"", converted),
         Err(_err) => hex::encode(bytes),
     };
+    const MAX_CHARS: usize = 500;
+    if text.chars().take(MAX_CHARS + 1).count() > MAX_CHARS {
+        let mut truncated: String = text.chars().take(MAX_CHARS).collect();
+        truncated.push('…');
+        text = truncated;
+    }
     Green.paint(text).to_string()
+}
+
+fn print_path(path: &[u64], config: &Config) -> String {
+    match config.indent {
+        IndentStyle::Dot => {
+            let mut out = dotted(path.len().saturating_sub(1));
+            if let Some(last) = path.last() {
+                out.push_str(&format!("{}", last));
+            }
+            out
+        }
+        IndentStyle::Space => {
+            let mut out = spaced(path.len().saturating_sub(1));
+            if let Some(last) = path.last() {
+                out.push_str(&format!("{}", last));
+            }
+            out
+        }
+        IndentStyle::Path => {
+            let formated_path: String = path.iter().map(|number| format!(".{}", number)).collect();
+            formated_path
+        }
+    }
 }

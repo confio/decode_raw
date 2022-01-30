@@ -10,6 +10,7 @@ edition = "2021"
 name = "decode_raw"
 
 [dependencies]
+clap = { version = "3.0.13", features = ["derive"] }
 protofish = "0.5.2"
 ansi_term = "0.12"
 hex = "0.4"
