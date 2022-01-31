@@ -11,6 +11,7 @@ pub struct Entry {
 #[derive(Debug, PartialEq)]
 pub enum EntryValue {
     Int(u128),
+    /// Wire type 2 (length delimited).
     Bytes(Vec<u8>),
     OpenNested,
     CloseNested,

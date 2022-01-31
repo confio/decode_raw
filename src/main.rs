@@ -39,6 +39,10 @@ struct Args {
     #[clap(long)]
     no_fixed32: bool,
 
+    /// Show all data in full length
+    #[clap(long)]
+    full: bool,
+
     /// The path to select. e.g. .2.1.1
     #[clap()]
     select: Option<String>,
@@ -55,6 +59,7 @@ enum IndentStyle {
 struct Config {
     pub indent: IndentStyle,
     pub select: Vec<u64>,
+    pub full: bool,
     pub parse_config: ParseConfig,
 }
 
@@ -69,6 +74,7 @@ fn main() {
     let config = Config {
         indent: args.indent,
         select: parse_select(&args.select.unwrap_or_default()),
+        full: args.full,
         parse_config: ParseConfig {
             no_fixed64: args.no_fixed || args.no_fixed64,
             no_fixed32: args.no_fixed || args.no_fixed32,
@@ -91,7 +97,12 @@ fn decode(bytes: &[u8], config: &Config) {
             match entry.value {
                 EntryValue::Int(i) => print!("{}: {}\n", path, print_int(i)),
                 EntryValue::Bytes(v) => {
-                    print!("{}: ({} bytes) {}\n", path, v.len(), print_bytes(&v))
+                    print!(
+                        "{}: ({} bytes) {}\n",
+                        path,
+                        v.len(),
+                        print_bytes(&v, config.full)
+                    )
                 }
                 EntryValue::OpenNested => {
                     if !path.is_empty() {
@@ -114,12 +125,12 @@ fn print_int(i: impl Into<u128>) -> String {
     Red.paint(i.into().to_string()).to_string()
 }
 
-fn print_bytes(bytes: &[u8]) -> String {
+fn print_bytes(bytes: &[u8], full: bool) -> String {
     let text = match show_as(bytes) {
         ShowAs::String(s) => escape_string(s),
         ShowAs::Bytes(bytes) => {
             const MAX_BYTES: usize = 256;
-            if bytes.len() <= MAX_BYTES {
+            if full || bytes.len() <= MAX_BYTES {
                 hex::encode(bytes)
             } else {
                 let mut truncated = hex::encode(&bytes[0..MAX_BYTES]);
