@@ -1,0 +1,11 @@
+syntax = "proto3";
+package examples;
+
+message Person {
+  uint64 id = 1;
+  string name = 2;
+  repeated Person children = 3;
+}
+
+// Use this command to generate python code for this file:
+// protoc --python_out=. ./examples.proto
