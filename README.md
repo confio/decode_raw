@@ -34,13 +34,17 @@ The tool decides between nested protobuf messages, strings and raw bytes on a be
 
 ## Installation
 
-Install from crates.io:
+### Install from crates.io
 
 ```sh
 cargo install decode_raw
 ```
 
-Update to latest version:
+Depending on how cargo is set up on your system you should find the binary in `$HOME/.cargo/bin` or `$CARGO_HOME/bin`. It is covenient to add this folder to you `$PATH`.
+
+### Update to latest version
+
+You can check your installed version with `decode_raw --version` and update with:
 
 ```sh
 cargo install --force decode_raw
@@ -80,13 +84,13 @@ decode_raw < docs/person.bin
 
 ## Goals & non-goals
 
-decode_raw should
+decode_raw should:
 
 - Make Simon happy when debugging protobuf
 - Be trivial to get started for users of `protoc --decode_raw`
 - Support proto3
 
-but it does not intend to:
+It does not intend to:
 
 - Provide stable outputs for scripting
 - Become a performance winner

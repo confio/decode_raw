@@ -17,7 +17,7 @@ use crate::proto::EntryValue;
 
 /// Simple program to greet a person
 #[derive(Parser)]
-#[clap(author, about, long_about = None)]
+#[clap(author, about, version, long_about = None)]
 struct Args {
     /// How to style indent
     #[clap(arg_enum, short, long, default_value = "dot")]
