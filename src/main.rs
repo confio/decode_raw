@@ -9,7 +9,7 @@ mod wire_type_2;
 use indent::{dotted, spaced};
 use proto::{try_parse_entries, ParseConfig};
 use select::parse_select;
-use wire_type_2::escape_string;
+use wire_type_2::{escape_string, show_as, ShowAs};
 
 use clap::{ArgEnum, Parser};
 
@@ -115,9 +115,9 @@ fn print_int(i: impl Into<u128>) -> String {
 }
 
 fn print_bytes(bytes: &[u8]) -> String {
-    let text = match std::str::from_utf8(bytes) {
-        Ok(converted) => escape_string(converted),
-        Err(_err) => {
+    let text = match show_as(bytes) {
+        ShowAs::String(s) => escape_string(s),
+        ShowAs::Bytes(bytes) => {
             const MAX_BYTES: usize = 256;
             if bytes.len() <= MAX_BYTES {
                 hex::encode(bytes)
