@@ -5,8 +5,8 @@ use std::io::Read;
 mod display;
 mod parse;
 
-use display::{dotted, escape_string, parse_select, show_as, spaced, ShowAs};
-use parse::{try_parse_entries, EntryValue, ParseConfig};
+use display::{dotted, escape_string, show_as, spaced, ShowAs};
+use parse::{try_parse_entries, EntryValue, ParseConfig, SelectQuery};
 
 /// Simple program to greet a person
 #[derive(Parser)]
@@ -51,7 +51,7 @@ enum IndentStyle {
 #[derive(Clone)]
 struct Config {
     pub indent: IndentStyle,
-    pub select: Vec<u64>,
+    pub select: SelectQuery,
     pub full: bool,
     pub parse_config: ParseConfig,
 }
@@ -66,7 +66,7 @@ fn main() {
 
     let config = Config {
         indent: args.indent,
-        select: parse_select(&args.select.unwrap_or_default()),
+        select: SelectQuery::parse(&args.select.unwrap_or_default()).unwrap(),
         full: args.full,
         parse_config: ParseConfig {
             no_fixed64: args.no_fixed || args.no_fixed64,
