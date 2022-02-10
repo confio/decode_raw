@@ -1,19 +1,12 @@
 use ansi_term::Colour::{Green, Red};
+use clap::{ArgEnum, Parser};
 use std::io::Read;
 
-mod indent;
-mod proto;
-mod select;
-mod wire_type_2;
+mod display;
+mod parse;
 
-use indent::{dotted, spaced};
-use proto::{try_parse_entries, ParseConfig};
-use select::parse_select;
-use wire_type_2::{escape_string, show_as, ShowAs};
-
-use clap::{ArgEnum, Parser};
-
-use crate::proto::EntryValue;
+use display::{dotted, escape_string, parse_select, show_as, spaced, ShowAs};
+use parse::{try_parse_entries, EntryValue, ParseConfig};
 
 /// Simple program to greet a person
 #[derive(Parser)]
