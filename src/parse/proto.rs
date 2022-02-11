@@ -34,7 +34,16 @@ impl Default for ParseConfig {
 
 /// Tries to parse bytes as protobuf message and returns entries.
 /// Each entry represents one line in the output.
-pub fn try_parse_entries(bytes: &[u8], path: &[u64], config: ParseConfig) -> Option<Vec<Entry>> {
+pub fn try_parse_entries(bytes: &[u8], config: ParseConfig) -> Option<Vec<Entry>> {
+    try_parse_entries_inner(bytes, config, &[])
+}
+
+/// The implementation for try_parse_entries.
+///
+/// The extra path argument is the position in the larger structure
+/// where the currently expected bytes were found. This is required
+/// to be able return the absolute path in the resulting entry.
+fn try_parse_entries_inner(bytes: &[u8], config: ParseConfig, path: &[u64]) -> Option<Vec<Entry>> {
     if bytes.is_empty() {
         // Empty byte arrays should be represented as "" instead of empty message
         return None;
@@ -71,7 +80,7 @@ pub fn try_parse_entries(bytes: &[u8], path: &[u64], config: ParseConfig) -> Opt
                     value: EntryValue::Int(*v),
                 }),
                 UnknownValue::VariableLength(v) => {
-                    if let Some(nested_entries) = try_parse_entries(&v, &nested_path, config) {
+                    if let Some(nested_entries) = try_parse_entries_inner(v, config, &nested_path) {
                         out.push(Entry {
                             path: nested_path.clone(),
                             value: EntryValue::OpenNested,
@@ -119,7 +128,7 @@ mod tests {
     #[test]
     fn try_parse_entries_works() {
         // one
-        let entries = try_parse_entries(b"\x12\x07Unknown", &[], ParseConfig::default()).unwrap();
+        let entries = try_parse_entries(b"\x12\x07Unknown", ParseConfig::default()).unwrap();
         assert_eq!(
             entries,
             &[Entry {
@@ -129,10 +138,56 @@ mod tests {
         );
 
         // two
-        let entries = try_parse_entries(
+        let entries =
+            try_parse_entries(b"\x12\x07Unknown\x12\x07Unknown", ParseConfig::default()).unwrap();
+        assert_eq!(
+            entries,
+            &[
+                Entry {
+                    path: vec![2],
+                    value: EntryValue::Bytes(b"Unknown".to_vec())
+                },
+                Entry {
+                    path: vec![2],
+                    value: EntryValue::Bytes(b"Unknown".to_vec())
+                }
+            ]
+        );
+
+        // No valid protobuf (incomplete)
+        let res = try_parse_entries(b"\x12\x07Unknown\x0a\x0fAtlantic ", ParseConfig::default());
+        assert_eq!(res, None);
+
+        // No valid protobuf (wrong wire type)
+        // End group (deprecated) in field 2: hex((2 << 3) | 4)
+        let res = try_parse_entries(b"\x14\x07Unknown", ParseConfig::default());
+        assert_eq!(res, None);
+    }
+
+    #[test]
+    fn try_parse_entries_returns_none_for_empty() {
+        let res = try_parse_entries(b"", ParseConfig::default());
+        assert_eq!(res, None);
+    }
+
+    #[test]
+    fn try_parse_entries_inner_works() {
+        // one
+        let entries =
+            try_parse_entries_inner(b"\x12\x07Unknown", ParseConfig::default(), &[]).unwrap();
+        assert_eq!(
+            entries,
+            &[Entry {
+                path: vec![2],
+                value: EntryValue::Bytes(b"Unknown".to_vec())
+            }]
+        );
+
+        // two
+        let entries = try_parse_entries_inner(
             b"\x12\x07Unknown\x12\x07Unknown",
-            &[],
             ParseConfig::default(),
+            &[],
         )
         .unwrap();
         assert_eq!(
@@ -150,7 +205,8 @@ mod tests {
         );
 
         // nested path
-        let entries = try_parse_entries(b"\x12\x07Unknown", &[42], ParseConfig::default()).unwrap();
+        let entries =
+            try_parse_entries_inner(b"\x12\x07Unknown", ParseConfig::default(), &[42]).unwrap();
         assert_eq!(
             entries,
             &[Entry {
@@ -160,22 +216,16 @@ mod tests {
         );
 
         // No valid protobuf (incomplete)
-        let res = try_parse_entries(
+        let res = try_parse_entries_inner(
             b"\x12\x07Unknown\x0a\x0fAtlantic ",
-            &[],
             ParseConfig::default(),
+            &[],
         );
         assert_eq!(res, None);
 
         // No valid protobuf (wrong wire type)
         // End group (deprecated) in field 2: hex((2 << 3) | 4)
-        let res = try_parse_entries(b"\x14\x07Unknown", &[], ParseConfig::default());
-        assert_eq!(res, None);
-    }
-
-    #[test]
-    fn try_parse_entries_returns_none_for_empty() {
-        let res = try_parse_entries(b"", &[], ParseConfig::default());
+        let res = try_parse_entries_inner(b"\x14\x07Unknown", ParseConfig::default(), &[]);
         assert_eq!(res, None);
     }
 }
