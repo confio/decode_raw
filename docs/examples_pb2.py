@@ -19,7 +19,7 @@ DESCRIPTOR = _descriptor.FileDescriptor(
   syntax='proto3',
   serialized_options=None,
   create_key=_descriptor._internal_create_key,
-  serialized_pb=b'\n\x0e\x65xamples.proto\x12\x08\x65xamples\"F\n\x06Person\x12\n\n\x02id\x18\x01 \x01(\x04\x12\x0c\n\x04name\x18\x02 \x01(\t\x12\"\n\x08\x63hildren\x18\x03 \x03(\x0b\x32\x10.examples.Personb\x06proto3'
+  serialized_pb=b'\n\x0e\x65xamples.proto\x12\x08\x65xamples\"q\n\x06Person\x12\n\n\x02id\x18\x01 \x01(\x04\x12\x0c\n\x04name\x18\x02 \x01(\t\x12\"\n\x08\x63hildren\x18\x03 \x03(\x0b\x32\x10.examples.Person\x12\x0b\n\x03\x61ge\x18\x04 \x01(\x02\x12\x0e\n\x06weight\x18\x05 \x01(\x01\x12\x0c\n\x04mood\x18\x06 \x01(\x10\x62\x06proto3'
 )
 
 
@@ -54,6 +54,27 @@ _PERSON = _descriptor.Descriptor(
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+    _descriptor.FieldDescriptor(
+      name='age', full_name='examples.Person.age', index=3,
+      number=4, type=2, cpp_type=6, label=1,
+      has_default_value=False, default_value=float(0),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+    _descriptor.FieldDescriptor(
+      name='weight', full_name='examples.Person.weight', index=4,
+      number=5, type=1, cpp_type=5, label=1,
+      has_default_value=False, default_value=float(0),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+    _descriptor.FieldDescriptor(
+      name='mood', full_name='examples.Person.mood', index=5,
+      number=6, type=16, cpp_type=2, label=1,
+      has_default_value=False, default_value=0,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
   ],
   extensions=[
   ],
@@ -67,7 +88,7 @@ _PERSON = _descriptor.Descriptor(
   oneofs=[
   ],
   serialized_start=28,
-  serialized_end=98,
+  serialized_end=141,
 )
 
 _PERSON.fields_by_name['children'].message_type = _PERSON

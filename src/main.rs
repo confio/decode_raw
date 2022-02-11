@@ -1,4 +1,4 @@
-use ansi_term::Colour::{Green, Red};
+use ansi_term::Colour::{Green, Red, Yellow};
 use clap::{ArgEnum, Parser};
 use std::io::Read;
 
@@ -89,7 +89,9 @@ fn decode(bytes: &[u8], config: &Config) {
 
             let path = print_path(&stripped_path, config);
             match entry.value {
-                EntryValue::Int(i) => print!("{}: {}\n", path, print_int(i)),
+                EntryValue::Fixed64(i) => println!("{}: (64 bit) {}", path, print_fixed64(i)),
+                EntryValue::Fixed32(i) => println!("{}: (32 bit) {}", path, print_fixed32(i)),
+                EntryValue::Varint(i) => println!("{}: {}", path, print_int(i)),
                 EntryValue::Bytes(v) => {
                     print!(
                         "{}: ({} bytes) {}\n",
@@ -113,6 +115,40 @@ fn decode(bytes: &[u8], config: &Config) {
     } else {
         panic!("Input bytes is not a valid protobuf serialization");
     }
+}
+
+fn yellow(s: impl ToString) -> String {
+    Yellow.paint(s.to_string()).to_string()
+}
+
+fn print_fixed64(v: u64) -> String {
+    let mut values = Vec::<String>::new();
+    values.push(yellow(v));
+
+    let as_signed = i64::from_le_bytes(v.to_le_bytes());
+    if as_signed < 0 {
+        values.push(yellow(as_signed));
+    }
+
+    let as_float = f64::from_le_bytes(v.to_le_bytes());
+    values.push(yellow(as_float));
+
+    values.join(" / ")
+}
+
+fn print_fixed32(v: u32) -> String {
+    let mut values = Vec::<String>::new();
+    values.push(yellow(v));
+
+    let as_signed = i32::from_le_bytes(v.to_le_bytes());
+    if as_signed < 0 {
+        values.push(yellow(as_signed));
+    }
+
+    let as_float = f32::from_le_bytes(v.to_le_bytes());
+    values.push(yellow(as_float));
+
+    values.join(" / ")
 }
 
 fn print_int(i: impl Into<u128>) -> String {

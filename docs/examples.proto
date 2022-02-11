@@ -5,6 +5,9 @@ message Person {
   uint64 id = 1;
   string name = 2;
   repeated Person children = 3;
+  float age = 4;
+  double weight = 5;
+  sfixed64 mood = 6;
 }
 
 // Use this command to generate python code for this file:

@@ -93,7 +93,7 @@ mod tests {
     fn is_selected_works() {
         let entry = Entry {
             path: vec![1, 2, 3],
-            value: EntryValue::Int(1),
+            value: EntryValue::Varint(1),
         };
         assert!(is_selected(&entry, &SelectQuery::parse(".1").unwrap()));
         assert!(is_selected(&entry, &SelectQuery::parse(".1.2").unwrap()));
