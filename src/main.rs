@@ -1,19 +1,14 @@
 use ansi_term::Colour::{Green, Red};
+use clap::{ArgEnum, Parser};
 use std::io::Read;
 
-mod indent;
-mod proto;
-mod select;
-mod wire_type_2;
+mod display;
+mod filter;
+mod parse;
 
-use indent::{dotted, spaced};
-use proto::{try_parse_entries, ParseConfig};
-use select::parse_select;
-use wire_type_2::{escape_string, show_as, ShowAs};
-
-use clap::{ArgEnum, Parser};
-
-use crate::proto::EntryValue;
+use display::{dotted, escape_string, show_as, spaced, ShowAs};
+use filter::{is_selected, SelectQuery};
+use parse::{try_parse_entries, EntryValue, ParseConfig};
 
 /// Simple program to greet a person
 #[derive(Parser)]
@@ -58,7 +53,7 @@ enum IndentStyle {
 #[derive(Clone)]
 struct Config {
     pub indent: IndentStyle,
-    pub select: Vec<u64>,
+    pub select: SelectQuery,
     pub full: bool,
     pub parse_config: ParseConfig,
 }
@@ -73,7 +68,7 @@ fn main() {
 
     let config = Config {
         indent: args.indent,
-        select: parse_select(&args.select.unwrap_or_default()),
+        select: SelectQuery::parse(&args.select.unwrap_or_default()).unwrap(),
         full: args.full,
         parse_config: ParseConfig {
             no_fixed64: args.no_fixed || args.no_fixed64,
@@ -86,11 +81,10 @@ fn main() {
 
 fn decode(bytes: &[u8], config: &Config) {
     if let Some(entries) = try_parse_entries(bytes, &[], config.parse_config) {
-        for entry in entries {
-            if !entry.path.starts_with(&config.select) {
-                continue;
-            }
-
+        for entry in entries
+            .into_iter()
+            .filter(|e| is_selected(e, &config.select))
+        {
             let stripped_path = entry.path[config.select.len()..].to_vec();
 
             let path = print_path(&stripped_path, config);
