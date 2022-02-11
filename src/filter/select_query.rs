@@ -15,8 +15,13 @@ impl Deref for SelectQuery {
 
 impl SelectQuery {
     pub fn parse(input: &str) -> Result<Self, String> {
-        let prepared = input.trim_start_matches('.');
-        if prepared.len() == 0 {
+        // Trim leading .
+        let prepared = if input.starts_with('.') {
+            &input[1..]
+        } else {
+            input
+        };
+        if prepared.is_empty() {
             return Ok(SelectQuery::default());
         }
         let components: Vec<&str> = prepared.split('.').collect();
@@ -72,6 +77,16 @@ mod tests {
         assert_eq!(err, "invalid digit found in string");
         let err = SelectQuery::parse("2 3").unwrap_err();
         assert_eq!(err, "invalid digit found in string");
+
+        // Empty components
+        let err = SelectQuery::parse(".1..2").unwrap_err();
+        assert_eq!(err, "cannot parse integer from empty string");
+        let err = SelectQuery::parse(".1.").unwrap_err();
+        assert_eq!(err, "cannot parse integer from empty string");
+        let err = SelectQuery::parse("..").unwrap_err();
+        assert_eq!(err, "cannot parse integer from empty string");
+        let err = SelectQuery::parse("..1").unwrap_err();
+        assert_eq!(err, "cannot parse integer from empty string");
     }
 
     #[test]
