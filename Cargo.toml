@@ -1,7 +1,7 @@
 [package]
 name = "decode_raw"
 description = "A protobuf debugging tool – `protoc --decode_raw` on steroids."
-version = "0.1.2"
+version = "0.1.3"
 edition = "2021"
 license = "Apache-2.0"
 repository = "https://github.com/confio/decode_raw"
