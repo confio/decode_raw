@@ -3,10 +3,12 @@ use clap::{ArgEnum, Parser};
 use std::io::Read;
 
 mod display;
+mod filter;
 mod parse;
 
 use display::{dotted, escape_string, show_as, spaced, ShowAs};
-use parse::{try_parse_entries, EntryValue, ParseConfig, SelectQuery};
+use filter::SelectQuery;
+use parse::{try_parse_entries, EntryValue, ParseConfig};
 
 /// Simple program to greet a person
 #[derive(Parser)]
