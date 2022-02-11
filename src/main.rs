@@ -7,7 +7,7 @@ mod filter;
 mod parse;
 
 use display::{dotted, escape_string, show_as, spaced, ShowAs};
-use filter::SelectQuery;
+use filter::{is_selected, SelectQuery};
 use parse::{try_parse_entries, EntryValue, ParseConfig};
 
 /// Simple program to greet a person
@@ -81,11 +81,10 @@ fn main() {
 
 fn decode(bytes: &[u8], config: &Config) {
     if let Some(entries) = try_parse_entries(bytes, &[], config.parse_config) {
-        for entry in entries {
-            if !entry.path.starts_with(&config.select) {
-                continue;
-            }
-
+        for entry in entries
+            .into_iter()
+            .filter(|e| is_selected(e, &config.select))
+        {
             let stripped_path = entry.path[config.select.len()..].to_vec();
 
             let path = print_path(&stripped_path, config);

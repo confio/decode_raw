@@ -1,5 +1,7 @@
 use std::ops::Deref;
 
+use crate::parse::Entry;
+
 #[derive(Default, Clone, PartialEq, Debug)]
 pub struct SelectQuery(Vec<u64>);
 
@@ -27,9 +29,18 @@ impl SelectQuery {
     }
 }
 
+/// Check if the given entry is selected by the select query.
+///
+/// Right now this means the query must be a prefix of the path.
+/// But you could imagine more complex queries as well later on.
+pub fn is_selected(entry: &Entry, query: &SelectQuery) -> bool {
+    entry.path.starts_with(query)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::EntryValue;
 
     #[test]
     fn parse_can_parse_empty() {
@@ -61,5 +72,21 @@ mod tests {
         assert_eq!(err, "invalid digit found in string");
         let err = SelectQuery::parse("2 3").unwrap_err();
         assert_eq!(err, "invalid digit found in string");
+    }
+
+    #[test]
+    fn is_selected_works() {
+        let entry = Entry {
+            path: vec![1, 2, 3],
+            value: EntryValue::Int(1),
+        };
+        assert!(is_selected(&entry, &SelectQuery::parse(".1").unwrap()));
+        assert!(is_selected(&entry, &SelectQuery::parse(".1.2").unwrap()));
+        assert!(is_selected(&entry, &SelectQuery::parse(".1.2.3").unwrap()));
+        assert!(!is_selected(
+            &entry,
+            &SelectQuery::parse(".1.2.3.4").unwrap()
+        ));
+        assert!(!is_selected(&entry, &SelectQuery::parse(".5").unwrap()));
     }
 }
