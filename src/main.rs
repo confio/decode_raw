@@ -80,7 +80,7 @@ fn main() {
 }
 
 fn decode(bytes: &[u8], config: &Config) {
-    if let Some(entries) = try_parse_entries(bytes, &[], config.parse_config) {
+    if let Some(entries) = try_parse_entries(bytes, config.parse_config) {
         for entry in entries
             .into_iter()
             .filter(|e| is_selected(e, &config.select))
