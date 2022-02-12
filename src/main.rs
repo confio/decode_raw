@@ -89,8 +89,8 @@ fn decode(bytes: &[u8], config: &Config) {
 
             let path = print_path(&stripped_path, config);
             match entry.value {
-                EntryValue::Fixed64(i) => println!("{}: (64 bit) {}", path, print_fixed64(i)),
-                EntryValue::Fixed32(i) => println!("{}: (32 bit) {}", path, print_fixed32(i)),
+                EntryValue::Fixed64(v) => println!("{}: (64 bit) {}", path, print_fixed64(v)),
+                EntryValue::Fixed32(v) => println!("{}: (32 bit) {}", path, print_fixed32(v)),
                 EntryValue::Varint(i) => println!("{}: {}", path, print_int(i)),
                 EntryValue::Bytes(v) => {
                     print!(
@@ -121,33 +121,31 @@ fn yellow(s: impl ToString) -> String {
     Yellow.paint(s.to_string()).to_string()
 }
 
-fn print_fixed64(v: u64) -> String {
-    let mut values = Vec::<String>::new();
-    values.push(yellow(v));
+fn print_fixed64(v: [u8; 8]) -> String {
+    let as_unsigned = u64::from_le_bytes(v);
+    let as_signed = i64::from_le_bytes(v);
+    let as_float = f64::from_le_bytes(v);
 
-    let as_signed = i64::from_le_bytes(v.to_le_bytes());
+    let mut values = Vec::<String>::new();
+    values.push(yellow(as_unsigned));
     if as_signed < 0 {
         values.push(yellow(as_signed));
     }
-
-    let as_float = f64::from_le_bytes(v.to_le_bytes());
     values.push(yellow(as_float));
-
     values.join(" / ")
 }
 
-fn print_fixed32(v: u32) -> String {
-    let mut values = Vec::<String>::new();
-    values.push(yellow(v));
+fn print_fixed32(v: [u8; 4]) -> String {
+    let as_unsigned = u32::from_le_bytes(v);
+    let as_signed = i32::from_le_bytes(v);
+    let as_float = f32::from_le_bytes(v);
 
-    let as_signed = i32::from_le_bytes(v.to_le_bytes());
+    let mut values = Vec::<String>::new();
+    values.push(yellow(as_unsigned));
     if as_signed < 0 {
         values.push(yellow(as_signed));
     }
-
-    let as_float = f32::from_le_bytes(v.to_le_bytes());
     values.push(yellow(as_float));
-
     values.join(" / ")
 }
 
