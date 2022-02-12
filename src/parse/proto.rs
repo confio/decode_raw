@@ -10,7 +10,20 @@ pub struct Entry {
 
 #[derive(Debug, PartialEq)]
 pub enum EntryValue {
-    Int(u128),
+    /// Wire type 1 (64-bit value) used for fixed64, sfixed64, double.
+    ///
+    /// The inner value here contains the bytes in the original order from the serialization.
+    /// To interprete them as numbers, use little endian signed/unsigned integers or little endian
+    /// doubles.
+    Fixed64([u8; 8]),
+    // Wire type 5 (32-bit value) used for fixed32, sfixed32, float
+    ///
+    /// The inner value here contains the bytes in the original order from the serialization.
+    /// To interprete them as numbers, use little endian signed/unsigned integers or little endian
+    /// floats.
+    Fixed32([u8; 4]),
+    /// Wire type 0 (Varint) used for int32, int64, uint32, uint64, sint32, sint64, bool, enum
+    Varint(u128),
     /// Wire type 2 (length delimited).
     Bytes(Vec<u8>),
     OpenNested,
@@ -63,7 +76,7 @@ fn try_parse_entries_inner(bytes: &[u8], config: ParseConfig, path: &[u64]) -> O
                     }
                     out.push(Entry {
                         path: nested_path,
-                        value: EntryValue::Int((*v).into()),
+                        value: EntryValue::Fixed64(v.to_le_bytes()),
                     })
                 }
                 UnknownValue::Fixed32(v) => {
@@ -72,12 +85,12 @@ fn try_parse_entries_inner(bytes: &[u8], config: ParseConfig, path: &[u64]) -> O
                     }
                     out.push(Entry {
                         path: nested_path,
-                        value: EntryValue::Int((*v).into()),
+                        value: EntryValue::Fixed32(v.to_le_bytes()),
                     })
                 }
                 UnknownValue::Varint(v) => out.push(Entry {
                     path: nested_path,
-                    value: EntryValue::Int(*v),
+                    value: EntryValue::Varint(*v),
                 }),
                 UnknownValue::VariableLength(v) => {
                     if let Some(nested_entries) = try_parse_entries_inner(v, config, &nested_path) {
