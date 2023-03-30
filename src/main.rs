@@ -1,4 +1,3 @@
-use ansi_term::Colour::{Green, Red, Yellow};
 use clap::{ArgEnum, Parser};
 use std::io::Read;
 
@@ -6,7 +5,7 @@ mod display;
 mod filter;
 mod parse;
 
-use display::{dotted, escape_string, show_as, spaced, ShowAs};
+use display::{dotted, escape_string, show_as, spaced, ColorMode, ShowAs};
 use filter::{is_selected, SelectQuery};
 use parse::{try_parse_entries, EntryValue, ParseConfig};
 
@@ -52,6 +51,7 @@ enum IndentStyle {
 
 #[derive(Clone)]
 struct Config {
+    pub color: ColorMode,
     pub indent: IndentStyle,
     pub select: SelectQuery,
     pub full: bool,
@@ -67,6 +67,7 @@ fn main() {
     }
 
     let config = Config {
+        color: ColorMode::Colored,
         indent: args.indent,
         select: SelectQuery::parse(&args.select.unwrap_or_default()).unwrap(),
         full: args.full,
@@ -89,15 +90,19 @@ fn decode(bytes: &[u8], config: &Config) {
 
             let path = print_path(&stripped_path, config);
             match entry.value {
-                EntryValue::Fixed64(v) => println!("{}: (64 bit) {}", path, print_fixed64(v)),
-                EntryValue::Fixed32(v) => println!("{}: (32 bit) {}", path, print_fixed32(v)),
-                EntryValue::Varint(i) => println!("{}: {}", path, print_int(i)),
+                EntryValue::Fixed64(v) => {
+                    println!("{}: (64 bit) {}", path, print_fixed64(v, config.color))
+                }
+                EntryValue::Fixed32(v) => {
+                    println!("{}: (32 bit) {}", path, print_fixed32(v, config.color))
+                }
+                EntryValue::Varint(i) => println!("{}: {}", path, print_int(i, config.color)),
                 EntryValue::Bytes(v) => {
                     print!(
                         "{}: ({} bytes) {}\n",
                         path,
                         v.len(),
-                        print_bytes(&v, config.full)
+                        print_bytes(&v, config.color, config.full)
                     )
                 }
                 EntryValue::OpenNested => {
@@ -117,43 +122,39 @@ fn decode(bytes: &[u8], config: &Config) {
     }
 }
 
-fn yellow(s: impl ToString) -> String {
-    Yellow.paint(s.to_string()).to_string()
-}
-
-fn print_fixed64(v: [u8; 8]) -> String {
+fn print_fixed64(v: [u8; 8], color: ColorMode) -> String {
     let as_unsigned = u64::from_le_bytes(v);
     let as_signed = i64::from_le_bytes(v);
     let as_float = f64::from_le_bytes(v);
 
     let mut values = Vec::<String>::new();
-    values.push(yellow(as_unsigned));
+    values.push(color.yellow(as_unsigned.to_string()));
     if as_signed < 0 {
-        values.push(yellow(as_signed));
+        values.push(color.yellow(as_signed.to_string()));
     }
-    values.push(yellow(as_float));
+    values.push(color.yellow(as_float.to_string()));
     values.join(" / ")
 }
 
-fn print_fixed32(v: [u8; 4]) -> String {
+fn print_fixed32(v: [u8; 4], color: ColorMode) -> String {
     let as_unsigned = u32::from_le_bytes(v);
     let as_signed = i32::from_le_bytes(v);
     let as_float = f32::from_le_bytes(v);
 
     let mut values = Vec::<String>::new();
-    values.push(yellow(as_unsigned));
+    values.push(color.yellow(as_unsigned.to_string()));
     if as_signed < 0 {
-        values.push(yellow(as_signed));
+        values.push(color.yellow(as_signed.to_string()));
     }
-    values.push(yellow(as_float));
+    values.push(color.yellow(as_float.to_string()));
     values.join(" / ")
 }
 
-fn print_int(i: impl Into<u128>) -> String {
-    Red.paint(i.into().to_string()).to_string()
+fn print_int(i: impl Into<u128>, color: ColorMode) -> String {
+    color.red(i.into().to_string())
 }
 
-fn print_bytes(bytes: &[u8], full: bool) -> String {
+fn print_bytes(bytes: &[u8], color: ColorMode, full: bool) -> String {
     let text = match show_as(bytes) {
         ShowAs::String(s) => escape_string(s),
         ShowAs::Bytes(bytes) => {
@@ -167,7 +168,7 @@ fn print_bytes(bytes: &[u8], full: bool) -> String {
             }
         }
     };
-    Green.paint(text).to_string()
+    color.green(text)
 }
 
 fn print_path(path: &[u64], config: &Config) -> String {
