@@ -13,6 +13,10 @@ use parse::{try_parse_entries, EntryValue, ParseConfig};
 #[derive(Parser)]
 #[clap(author, about, version, long_about = None)]
 struct Args {
+    /// Use colors in the output
+    #[clap(arg_enum, long, default_value = "auto")]
+    color: Color,
+
     /// How to style indent
     #[clap(arg_enum, short, long, default_value = "dot")]
     indent: IndentStyle,
@@ -43,6 +47,13 @@ struct Args {
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, ArgEnum)]
+enum Color {
+    Yes,
+    Never,
+    Auto,
+}
+
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, ArgEnum)]
 enum IndentStyle {
     Space,
     Dot,
@@ -58,6 +69,10 @@ struct Config {
     pub parse_config: ParseConfig,
 }
 
+fn is_a_tty() -> bool {
+    unsafe { libc::isatty(libc::STDOUT_FILENO) }.is_positive()
+}
+
 fn main() {
     let args = Args::parse();
 
@@ -67,7 +82,17 @@ fn main() {
     }
 
     let config = Config {
-        color: ColorMode::Colored,
+        color: match args.color {
+            Color::Yes => ColorMode::Colored,
+            Color::Never => ColorMode::Plain,
+            Color::Auto => {
+                if is_a_tty() {
+                    ColorMode::Colored
+                } else {
+                    ColorMode::Plain
+                }
+            }
+        },
         indent: args.indent,
         select: SelectQuery::parse(&args.select.unwrap_or_default()).unwrap(),
         full: args.full,
